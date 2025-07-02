@@ -812,7 +812,103 @@ class QuantumReservoirNetwork:
         xa_x_grad = ( xa_x_plus - xa_x_minus ) * 0.5
 
         return xa_x_grad
+    
+    
+    def quantum_open_loop_jacobian_leakrate(self,sys,N, dt, x0, alpha, Wout,L, norm_time):
+        """ Advances ESN in open-loop and calculates the conditional lyapunov exponents.
+            Args:
+                N: number of time steps
+                x0: initial reservoir state
+                Wout: output matrix
+            Returns:
+                time series of prediction
+                final augmented reservoir state
+        """
+        # Discard 1/10 of initial test set as a transient for the
+        # tangent vectors to relax on the attractor.
+        Ntransient = int(N/10)
 
+        N_test = N - Ntransient
+        Ttot  = np.arange(int(N_test/norm_time)) * dt * norm_time
+    
+        N_test_norm = int(N_test/norm_time)
+
+        # Lyapunov Exponents timeseries
+        LE = np.zeros((N_test_norm,self.dim))
+        # finite-time Backward Lyapunov Exponents timeseries
+        FTLE = np.zeros((N_test_norm,self.dim))
+        # Q matrix recorded in time
+        QQ_t = np.zeros((self.N_units,self.dim,N_test_norm))
+        # R matrix recorded in time
+        RR_t = np.zeros((self.dim,self.dim,N_test_norm))
+
+        xa    = x0.copy()
+        Yh    = np.empty((N, self.dim))
+        xat   = np.empty((N, self.N_units))
+        
+        xat[0]= xa[:self.N_units]
+        Yh[0] = np.dot(xa, Wout)
+
+        #Initialize the GSVs
+        U    = scipy.linalg.orth(np.random.rand(self.N_units,self.dim))
+        Q, R = sys.qr_factorization(U)
+        U    = Q[:,:self.dim].copy()
+        #print('U_1',U.shape)
+        
+        xa_prev = xa[:self.N_units]
+        # Yh_prev = U_in[0,:]
+        
+        for i in np.arange(1,Ntransient):
+            #print('Step #',i)
+            xa    = self.quantum_step(xa_prev, Yh[i-1], alpha)
+
+            Yh[i] = np.dot(xa, Wout)
+            xat[i]= xa[:self.N_units].copy()
+
+            #0diag_mat = np.diag(self.quantum_grad(xa[:self.N_units],xa_prev[:self.N_units]))
+            jacobian = (np.diag(np.ones(self.N_units) * self.epsilon_q)).dot(np.matmul(np.zeros((self.N_units,self.dim)), Wout[:self.N_units, :].T)) + (np.diag(np.ones(self.N_units) * (1 - self.epsilon_q)))
+            U        = np.matmul(jacobian, U)
+
+            #print('U_2',U.shape)
+            if i % norm_time == 0:
+                Q, R  = sys.qr_factorization(U)
+                U    = Q[:,:self.dim].copy()
+
+                
+            xa_prev = xa[:self.N_units]
+        
+        
+        xa_prev = xa[:self.N_units]
+        indx = 0
+        for i in np.arange(Ntransient,N):
+            #print('U_2',U.shape)
+            xa    = self.quantum_step(xa_prev, Yh[i-1], alpha)
+
+            Yh[i] = np.dot(xa, Wout)
+            xat[i]= xa[:self.N_units].copy()
+
+            jacobian = (np.diag(np.ones(self.N_units) * self.epsilon_q)).dot(np.matmul(np.zeros((self.N_units,self.dim)), Wout[:self.N_units, :].T)) + (np.diag(np.ones(self.N_units) * (1 - self.epsilon_q)))
+            U        = np.matmul(jacobian, U)
+            #print(U.shape)
+            if i % norm_time == 0:
+                Q, R = sys.qr_factorization(U)
+                U     = Q[:,:self.dim].copy()
+
+                RR_t[:,:,indx] = R.copy()
+                QQ_t[:,:,indx] = Q.copy()
+                LE[indx]       = np.abs(np.diag(R[:self.dim,:self.dim]))
+                FTLE[indx]     = (1./dt)*np.log(LE[indx])
+                indx          +=1
+
+                if i%20000==0:
+                    print('Inside closed loop i=',i)
+
+            xa_prev = xa[:self.N_units]
+
+        LEs = np.cumsum(np.log(LE[1:]),axis=0) / np.tile(Ttot[1:],(self.dim,1)).T
+        print('Conditional Lyapunov exponents: ',LEs[-1])
+
+        return Yh, xa, LEs
 
 
     def quantum_closed_loop_jacobian_leakrate(self,sys,N, dt, x0, alpha, Wout, norm,norm_time,layered):
@@ -926,6 +1022,6 @@ class QuantumReservoirNetwork:
             xa_prev = xa[:self.N_units]
 
         LEs = np.cumsum(np.log(LE[1:]),axis=0) / np.tile(Ttot[1:],(self.dim,1)).T
-        print('ESN Lyapunov exponents: ',LEs[-1])
+        print('RF-QRC Lyapunov exponents: ',LEs[-1])
 
-        return Yh, xa, LEs
+        return QQ_t, RR_t , Yh, xa, LEs
