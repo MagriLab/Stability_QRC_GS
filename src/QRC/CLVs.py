@@ -151,7 +151,7 @@ def timeseriesdot(x, y, multype):
     return tsdot
 
 
-def CLV_angles(clv, target_dim):
+def CLV_angles_true(clv, target_dim):
     # calculate angles between CLVs
     costhetas = np.zeros((clv[:, 0, :].shape[1], target_dim))
     count = 0
@@ -206,7 +206,7 @@ def calculate_CLVs(QQ, RR, dt):
     # normalize CLVs
     V, _ = normalize(V)
     # find the angles
-    theta = CLV_angles(V, target_dim)
+    theta = CLV_angles_true(V, target_dim)
 
     # FTCLE: Finite-time lyapunov exponents along CLVs
     ftcle = np.zeros((target_dim, N + 1))
