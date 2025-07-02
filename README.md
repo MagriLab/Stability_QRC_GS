@@ -11,7 +11,7 @@ This repository provides a framework for studying the stability of chaotic dynam
 
 ## Usage
 
-To get started, simply run:
+To get started:
 First, install the required dependencies:
 ```bash
 pip install -r requirements.txt
