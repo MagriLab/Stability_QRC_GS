@@ -4,10 +4,10 @@ This repository provides a framework for studying the stability of chaotic dynam
 
 ## Repository Structure
 
-- **`Notebook.ipynb`**  
+- **`src/Notebook.ipynb`**  
   Contains the main workflow to evaluate Lyapunov exponents using a trained quantum reservoir computer. Inputs can be modified to extend the framework to other systems such as **Lorenz96**, and to vary quantum noise models and the number of measurement **shots**.
 
-- **`QRC.py`**  
+- **`src/QRC/qrc.py`**  
   Implements the **Qiskit-based quantum reservoir** and the methods required to compute **Lyapunov exponents**, including both conditional and autonomous versions, using quantum circuit simulations.
 
 ## Usage
