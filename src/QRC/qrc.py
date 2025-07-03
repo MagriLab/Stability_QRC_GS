@@ -188,66 +188,6 @@ class QuantumReservoirNetwork:
 
         return self.param_qc
 
-    def transpile_param_quantumcircuit(self,trys,fake_backend,save=False):
-        self.gen_param_quantumcircuit() # will create a parameterized quantum circuit
-        backend = fake_backend
-        t_depth = []
-        tr_qc = []
-
-        print('Transpiling for backend, with trials, ',trys)
-        for ll in range(trys):
-            t_qc = transpile(self.param_qc, backend,optimization_level=3)
-            tr_qc.append(t_qc)
-            t_depth.append(tr_qc[ll].depth())
-            print('Original depth:', self.param_qc.depth(), 'Decomposed Depth:', tr_qc[ll].depth())
-            # print(f"CNOTs: ",'Original: ',self.param_qc.count_ops(), 'Transpiled: ', tr_qc[ll].count_ops())
-
-        print('Minimum Depth:', np.min(t_depth) , ', Index of minimum depth:' , np.argmin(t_depth) , ', Original info:' ,self.param_qc.count_ops(), ', Transpiled info:',tr_qc[np.argmin(t_depth)].count_ops())
-
-        self.transpiled_qc = tr_qc[np.argmin(t_depth)]
-
-        if save:
-            print('Saving transpiled circuit as, transpiled', str(backend))
-            with open("qc_transpiled_{}_MFE.qpy".format('ibm_kyoto'), "wb") as qpy_file_write:
-                qpy.dump(self.transpiled_qc, qpy_file_write)
-
-        return self.transpiled_qc
-
-
-    def load_quantumcircuit(self,prob_p,x_in,alpha):
-        if self.param_qc is not None:
-            pass
-        else:
-            self.gen_param_quantumcircuit()
-            warnings.warn("Parameterized circuit not found, generating...")
-
-        if self.transpiled_qc is not None:
-            qc = self.transpiled_qc
-
-            if self.transpiled_warn is None: # To show only once
-                warnings.warn('Using a user transpiled circuit, please check backend requirements')
-                self.transpiled_warn = str(0)
-        else:
-            qc = self.param_qc
-
-        if self.config == 1 or self.config == 2:
-            #print('With recurrency')
-            comb_val =  np.concatenate((prob_p,x_in,alpha)) # Combined Vector of Parameters Values / Chaning Order as Qiskit Parameters are returned Alphabetically
-
-        else:
-            #print('Without recurrency')
-            comb_val =  np.concatenate((x_in,alpha)) # Combined Vector of Parameters Values / Chaning Order as Qiskit Parameters are returned Alphabetically
-
-        for i , j in enumerate(comb_val):
-            #print(i,j)
-            bound_qc = qc.assign_parameters({self.param_qc.parameters[i]: j})
-            qc  = bound_qc
-
-        self.qc = qc
-
-        return self.qc
-
-
     def gen_quantumcircuit(self,prob_p,x_in,alpha):
 
         P  = prob_p
@@ -490,7 +430,7 @@ class QuantumReservoirNetwork:
             Xa[i] = self.quantum_step(Xa[i-1,:self.N_units], U[i-1],alpha)
 
         return Xa
-
+    
 
     def quantum_closedloop(self,N,x0,Wout_q,alpha):
         """Advances Quantum Circ in Closed Loop
@@ -758,8 +698,8 @@ class QuantumReservoirNetwork:
             _xa_grad_: _Gradient wrt input parameter_
         """
         Yh_orig = Yh.copy()
-        #x_tilde = self.leak_integral(xa,xa_prev)
-        x_tilde = xa.copy()
+        x_tilde = self.leak_integral(xa,xa_prev)
+        # x_tilde = xa.copy()
         xa_y_grad = np.zeros([self.N_units,self.dim])
 
         for ll in range(self.dim):
