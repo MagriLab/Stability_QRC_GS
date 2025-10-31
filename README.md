@@ -25,6 +25,6 @@ python Notebook.ipynb
 ## Citation
 If you use this code in your research, please cite the corresponding paper:
 
-Robust quantum reservoir computers for forecasting chaotic dynamics: generalized synchronization and stability (https://arxiv.org/abs/2506.22335)
+Robust quantum reservoir computers for forecasting chaotic dynamics: generalized synchronization and stability (https://doi.org/10.1098/rspa.2025.0550)
 
 
